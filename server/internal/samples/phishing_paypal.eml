@@ -1,0 +1,58 @@
+Return-Path: <bounce@paypa1-security.xyz>
+Received: from tor-exit-05.torservers.net (tor-exit-05.torservers.net [185.220.101.5])
+        by mail.relay-gateway.nl (Postfix) with ESMTP id A4F2B8C91D2;
+        Tue, 27 Aug 2026 06:15:02 +0200 (CEST)
+Received: from paypa1-security.xyz (localhost [127.0.0.1])
+        by relay-smtp01.paypa1-security.xyz (Postfix) with ESMTP id 3B9A1C88;
+        Tue, 27 Aug 2026 06:14:58 +0200 (CEST)
+Received: from mx.corporate-victim.com (mail.corporate-victim.com [198.51.100.24])
+        by mx.victim.com (Postfix) with ESMTPS id 9C1D7F33;
+        Tue, 27 Aug 2026 10:15:05 +0530 (IST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=paypa1-security.xyz;
+        s=default; h=from:to:subject:date:message-id;
+        bh=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=;
+        b=INVALID_SIGNATURE_MISMATCH_PLACEHOLDER==
+Received-SPF: Fail (IP 185.220.101.5 is not authorized to send mail for paypal.com)
+Authentication-Results: mx.victim.com;
+        spf=fail (sender IP is 185.220.101.5) smtp.mailfrom=paypa1-security.xyz;
+        dkim=fail header.d=paypal.com header.s=default;
+        dmarc=fail action=reject header.from=paypal.com
+From: "PayPal Security" <service@paypa1-security.xyz>
+To: victim@corporate-victim.com
+Reply-To: attacker-trap@mail.ru
+Subject: =?utf-8?q?=F0=9F=9A=A8_Urgent=3A_Your_PayPal_Account_Has_Been_Suspended?=
+Date: Tue, 27 Aug 2026 06:15:00 +0200
+Message-Id: <20260827061500.12345@paypa1-security.xyz>
+MIME-Version: 1.0
+User-Agent: PHPMailer 6.1.6
+Content-Type: multipart/alternative; boundary="PayPal_Boundary_921"
+X-Mailer: PHPMailer 6.1.6
+
+--PayPal_Boundary_921
+Content-Type: text/plain; charset=UTF-8
+
+Dear Valued PayPal Customer,
+
+We have detected UNAUTHORIZED ACCESS to your PayPal account. Your account has been suspended immediately for your protection.
+
+ACTION REQUIRED: You must verify your identity within 24 hours or your account will be PERMANENTLY CLOSED.
+
+Click here immediately to restore access: http://paypa1-verify-account.top/login?token=abc123
+
+This is your final warning. Failure to comply will result in permanent account closure and legal action.
+
+PayPal Security Team
+--PayPal_Boundary_921
+Content-Type: text/html; charset=UTF-8
+
+<html><body style="background:#003087;font-family:Arial">
+<div style="max-width:600px;margin:auto;background:white;padding:20px">
+<img src="https://www.paypal.com/webapps/mpp/ua/logo-full-optimized-372x93.png" alt="PayPal">
+<h2 style="color:#d00">🚨 Account Suspended – Immediate Action Required</h2>
+<p>Dear Valued Customer,</p>
+<p>We detected <strong>unauthorized login attempts</strong> on your PayPal account. Your account has been <strong>temporarily suspended</strong>.</p>
+<p><strong>You must verify your identity within 24 hours</strong> to restore access.</p>
+<p><a href="http://paypa1-verify-account.top/login?token=abc123" style="background:#0070ba;color:white;padding:12px 24px;text-decoration:none;border-radius:4px">https://www.paypal.com/signin</a></p>
+<p style="color:#666;font-size:12px">© PayPal 2026 | <a href="#">Privacy Policy</a></p>
+</div></body></html>
+--PayPal_Boundary_921--
