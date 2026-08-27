@@ -1,9 +1,10 @@
-import { initMap, renderHopMap } from './map.js';
+import { initMap } from './map.js';
 import { renderResults } from './ui.js';
 
 const API_BASE = 'http://localhost:8080';
 let mapInstance = null;
 let currentSampleId = null;
+let currentAnalysisData = null; // Store fetched data
 let loadedSamples = [];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,109 +31,143 @@ function renderInbox(samples) {
     samples.forEach(s => {
         const row = document.createElement('div');
         row.className = 'email-row';
+        row.dataset.id = s.id;
         row.innerHTML = `
-            <div class="controls">
-                <i class="far fa-square"></i>
-                <i class="far fa-star"></i>
+            <div class="row-header">
+                <div class="row-sender">${s.name}</div>
+                <div class="row-date">10:45 AM</div>
             </div>
-            <div class="sender">${s.name}</div>
-            <div class="subject-snippet">
-                <span class="subject">${s.category}</span>
-                <span class="snippet">- ${s.description}</span>
-            </div>
-            <div class="date">Aug 27</div>
+            <div class="row-subject">${s.category}</div>
+            <div class="row-snippet">${s.description}</div>
         `;
-        row.addEventListener('click', () => openEmail(s));
+        row.addEventListener('click', () => openEmail(s, row));
         list.appendChild(row);
     });
 }
 
-function openEmail(sample) {
+async function openEmail(sample, rowElement) {
     currentSampleId = sample.id;
-    document.getElementById('inbox-list').classList.add('hidden');
-    document.getElementById('reading-pane').classList.remove('hidden');
+    currentAnalysisData = null; // reset
     
+    // Highlight selected row
+    document.querySelectorAll('.email-row').forEach(r => r.classList.remove('active'));
+    if (rowElement) rowElement.classList.add('active');
+    
+    // Show reading pane
+    document.getElementById('empty-state').classList.add('hidden');
+    document.getElementById('email-view').classList.remove('hidden');
+    
+    // Reset banner to un-scanned state
+    const banner = document.getElementById('integration-banner');
+    const scanBtn = document.getElementById('btn-analyze-threat');
+    banner.style.background = 'rgba(59,130,246,0.1)';
+    banner.style.borderColor = 'rgba(59,130,246,0.2)';
+    banner.querySelector('span').textContent = "Threat Engine Ready";
+    scanBtn.className = 'scan-btn';
+    scanBtn.innerHTML = '<i class="fas fa-bolt"></i> Scan Email';
+    
+    // Close sidebar if open from previous email
+    document.getElementById('threat-sidebar').classList.remove('open');
+    
+    // Show quick placeholder metadata while loading real data
     document.getElementById('read-subject').textContent = sample.category;
     document.getElementById('read-sender-name').textContent = sample.name;
     document.getElementById('read-sender-email').textContent = `<${sample.id}@example.com>`;
-    
     document.getElementById('read-avatar').textContent = sample.name.charAt(0);
     
-    // Quick fake body based on description, but ideally we'd fetch the raw EML body.
-    // For MVP, we'll display a generic message or description.
     document.getElementById('read-body').innerHTML = `
-        <p><strong>Category:</strong> ${sample.category}</p>
-        <p><strong>Description:</strong> ${sample.description}</p>
-        <hr style="margin: 20px 0; border:0; border-top:1px solid #ccc;">
-        <p style="color:#555;">[Raw email content preview hidden. Click Analyze to see forensic details.]</p>
+        <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+            <i class="fas fa-circle-notch fa-spin fa-2x mb-3"></i>
+            <p style="margin-top: 10px;">Loading email content...</p>
+        </div>
     `;
-}
 
-function setupEventListeners() {
-    document.getElementById('btn-back-to-inbox').addEventListener('click', () => {
-        document.getElementById('reading-pane').classList.add('hidden');
-        document.getElementById('inbox-list').classList.remove('hidden');
-    });
-
-    document.getElementById('btn-analyze-threat').addEventListener('click', () => {
-        if (currentSampleId) analyzeSample(currentSampleId);
-    });
-
-    document.getElementById('btn-close-analysis').addEventListener('click', () => {
-        document.getElementById('analysis-overlay').classList.add('hidden');
-    });
-}
-
-async function analyzeSample(sampleId) {
-    showSpinner();
+    // Fetch the actual email seamlessly
     try {
         const res = await fetch(`${API_BASE}/api/v1/analyze`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sample_id: sampleId })
+            body: JSON.stringify({ sample_id: sample.id })
         });
         
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || 'Analysis failed');
+        if (!res.ok) throw new Error('Analysis failed');
+        currentAnalysisData = await res.json();
+        const meta = currentAnalysisData.metadata;
+        
+        // Update reading pane with actual email data
+        document.getElementById('read-subject').textContent = meta.subject;
+        document.getElementById('read-sender-name').textContent = meta.sender_name || meta.from;
+        document.getElementById('read-sender-email').textContent = `<${meta.sender_address}>`;
+        
+        if (meta.body_html) {
+            document.getElementById('read-body').innerHTML = meta.body_html;
+        } else if (meta.raw_body) {
+            document.getElementById('read-body').innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; margin:0;">${meta.raw_body}</pre>`;
+        } else {
+            document.getElementById('read-body').innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; margin:0;">${meta.body_preview}</pre>`;
         }
-        
-        const data = await res.json();
-        
-        document.getElementById('analysis-overlay').classList.remove('hidden');
-        
-        if (!mapInstance) {
-            mapInstance = initMap('map-container');
-        }
-        
-        // Update reading pane with actual email body/subject now that we have it
-        if(data.metadata) {
-            document.getElementById('read-subject').textContent = data.metadata.subject;
-            document.getElementById('read-sender-name').textContent = data.metadata.sender_name || data.metadata.from;
-            document.getElementById('read-sender-email').textContent = `<${data.metadata.sender_address}>`;
-            
-            if (data.metadata.body_html) {
-                document.getElementById('read-body').innerHTML = data.metadata.body_html;
-            } else {
-                document.getElementById('read-body').innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${data.metadata.body_preview}</pre>`;
-            }
-        }
-        
-        renderResults(data, mapInstance);
         
     } catch (e) {
-        showToast(e.message, 'error');
-    } finally {
-        hideSpinner();
+        document.getElementById('read-body').innerHTML = `
+            <div style="color:var(--danger)">Error loading email content: ${e.message}</div>
+        `;
     }
 }
 
-function showSpinner() {
-    document.getElementById('loading-spinner').classList.remove('hidden');
+function setupEventListeners() {
+    document.getElementById('btn-analyze-threat').addEventListener('click', () => {
+        analyzeSample();
+    });
+
+    document.getElementById('btn-close-threat').addEventListener('click', () => {
+        document.getElementById('threat-sidebar').classList.remove('open');
+    });
 }
 
-function hideSpinner() {
-    document.getElementById('loading-spinner').classList.add('hidden');
+function analyzeSample() {
+    // If we haven't finished background loading yet, ignore click or show spinner
+    if (!currentAnalysisData) {
+        showToast("Still downloading email data, please wait...", "error");
+        return;
+    }
+    
+    const data = currentAnalysisData;
+    
+    // Open the integration sidebar
+    const sidebar = document.getElementById('threat-sidebar');
+    sidebar.classList.add('open');
+    
+    // Initialize map only when sidebar is visible so Leaflet sizes correctly
+    setTimeout(() => {
+        if (!mapInstance) {
+            mapInstance = initMap('map-container');
+        } else {
+            mapInstance.invalidateSize();
+        }
+        renderResults(data, mapInstance);
+    }, 300); // Wait for transition
+    
+    // Update Banner Style
+    const banner = document.getElementById('integration-banner');
+    const scanBtn = document.getElementById('btn-analyze-threat');
+    
+    if (data.risk_level === 'MALICIOUS') {
+        banner.style.background = 'rgba(239,68,68,0.1)';
+        banner.style.borderColor = 'rgba(239,68,68,0.2)';
+        banner.querySelector('span').textContent = "Threat Engine: CRITICAL ALERT";
+        banner.querySelector('span').style.color = "#fca5a5";
+        banner.querySelector('.shield-icon').style.color = "var(--danger)";
+        scanBtn.className = 'scan-btn scanned-danger';
+        scanBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Threats Detected';
+    } else {
+        banner.style.background = 'rgba(16,185,129,0.1)';
+        banner.style.borderColor = 'rgba(16,185,129,0.2)';
+        banner.querySelector('span').textContent = "Threat Engine: NO THREATS FOUND";
+        banner.querySelector('span').style.color = "#6ee7b7";
+        banner.querySelector('.shield-icon').style.color = "var(--success)";
+        scanBtn.className = 'scan-btn scanned';
+        scanBtn.innerHTML = '<i class="fas fa-check-circle"></i> Clean';
+    }
 }
 
 function showToast(msg, type) {
