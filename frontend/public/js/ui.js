@@ -1,149 +1,78 @@
-/**
- * ui.js — UI Rendering Functions for Modern Mail
- * SIH26106 Email Threat Forensics
- */
-
 import { renderHopMap } from './map.js';
 
 export function renderResults(data, map) {
-  const meta = data.metadata || {};
-  
-  renderScoreCard(data.risk_score, data.risk_level, data.verdict);
+  renderVerdict(data.risk_score, data.risk_level, data.verdict);
   renderAuthPills(data.security_checks);
-  renderIndicators(data.threat_indicators);
-  renderNLP(data.nlp_analysis);
-  renderURLsTable(data.extracted_urls);
-  renderAttachmentsTable(data.attachments);
+  renderFindings(data.threat_indicators);
   
   if (map && data.hops) {
       renderHopMap(map, data.hops);
   }
 }
 
-function renderScoreCard(score = 0, level = 'UNKNOWN', verdict = 'No analysis') {
+function renderVerdict(score = 0, level = 'UNKNOWN', verdict = '') {
     const scoreVal = document.getElementById('score-value');
     const badge = document.getElementById('risk-level-badge');
     const verdictEl = document.getElementById('verdict-text');
-    const circle = document.getElementById('score-circle');
     
     if (scoreVal) scoreVal.textContent = score;
-    if (badge) badge.textContent = level;
-    if (verdictEl) verdictEl.textContent = verdict.replace(/_/g, ' ');
     
-    let color = '#10b981'; // green
-    if (score > 30) color = '#f59e0b'; // orange
-    if (score > 60) color = '#ef4444'; // red
-    
-    if (circle) {
-        circle.style.stroke = color;
-        setTimeout(() => {
-            circle.style.strokeDasharray = `${score}, 100`;
-        }, 100);
+    if (badge) {
+        badge.textContent = level;
+        let bg = 'rgba(16,185,129,0.2)'; let col = '#10b981';
+        if (score > 30) { bg = 'rgba(245,158,11,0.2)'; col = '#f59e0b'; }
+        if (score > 60) { bg = 'rgba(239,68,68,0.2)'; col = '#ef4444'; }
+        badge.style.background = bg;
+        badge.style.color = col;
+        scoreVal.style.color = col;
     }
+    
+    if (verdictEl) verdictEl.textContent = verdict.replace(/_/g, ' ');
 }
 
 function renderAuthPills(security) {
     if (!security) return;
     
-    const container = document.querySelector('.pills-container');
+    const container = document.getElementById('auth-pills');
     const alignEl = document.getElementById('domain-alignment');
     
     if (container) {
         container.innerHTML = ['spf', 'dkim', 'dmarc'].map(type => {
             if (!security[type]) return '';
             const res = (security[type].result || 'NONE').toLowerCase();
-            const icon = res === 'pass' ? 'fa-check' : res === 'fail' ? 'fa-times' : 'fa-minus';
-            return `<div class="pill ${res}"><i class="fas ${icon}"></i> ${type.toUpperCase()}: ${res.toUpperCase()}</div>`;
+            return `<div class="pill ${res}">${type.toUpperCase()}: ${res.toUpperCase()}</div>`;
         }).join('');
     }
     
     if (alignEl && security.domain_alignment) {
         alignEl.textContent = security.domain_alignment.details || '';
-        if (!security.domain_alignment.is_aligned) {
-            alignEl.style.color = '#ef4444';
-        } else {
-            alignEl.style.color = '#10b981';
-        }
+        alignEl.style.color = security.domain_alignment.is_aligned ? '#10b981' : '#ef4444';
     }
 }
 
-function renderIndicators(indicators) {
+function renderFindings(indicators) {
     const list = document.getElementById('indicators-list');
     if (!list) return;
     
     if (!indicators || indicators.length === 0) {
-        list.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">No threat indicators found.</div>`;
+        list.innerHTML = `<div style="color:var(--text-muted);font-size:12px;">No threats found.</div>`;
         return;
     }
     
     list.innerHTML = indicators.map(ind => {
         const severity = (ind.severity || 'info').toLowerCase();
-        return `
-            <div class="indicator-item ${severity}">
-                <h4>${escHtml(ind.title)}</h4>
-                <p>${escHtml(ind.description)}</p>
-            </div>
-        `;
-    }).join('');
-}
-
-function renderNLP(nlp) {
-    if (!nlp) return;
-    
-    const bar = document.getElementById('urgency-bar');
-    const summary = document.getElementById('nlp-summary');
-    const keywords = document.getElementById('nlp-keywords');
-    
-    if (bar) {
-        setTimeout(() => {
-            bar.style.width = Math.min(nlp.urgency_score || 0, 100) + '%';
-        }, 100);
-    }
-    if (summary) summary.textContent = nlp.summary || '';
-    if (keywords && nlp.urgency_keywords) {
-        keywords.innerHTML = nlp.urgency_keywords.map(kw => `<span class="tag">${escHtml(kw)}</span>`).join('');
-    }
-}
-
-function renderURLsTable(urls) {
-    const tbody = document.querySelector('#urls-table tbody');
-    if (!tbody) return;
-    
-    if (!urls || urls.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="2" style="color:var(--text-muted);text-align:center;">No URLs extracted</td></tr>`;
-        return;
-    }
-    
-    tbody.innerHTML = urls.map(u => {
-        let riskClass = 'pill pass';
-        let icon = 'fa-check-circle';
-        if (u.risk_level === 'MALICIOUS') { riskClass = 'pill fail'; icon = 'fa-exclamation-triangle'; }
-        if (u.risk_level === 'SUSPICIOUS') { riskClass = 'pill neutral'; icon = 'fa-exclamation-circle'; }
+        let icon = 'fa-info-circle c-blue';
+        if (severity === 'high' || severity === 'critical') icon = 'fa-exclamation-triangle c-red';
+        else if (severity === 'medium') icon = 'fa-exclamation-circle c-orange';
         
         return `
-            <tr>
-                <td><span class="${riskClass}" style="width:fit-content"><i class="fas ${icon}"></i> ${u.risk_level}</span></td>
-                <td style="word-break:break-all;"><a href="#" style="color:#3b82f6;">${escHtml(u.url)}</a></td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function renderAttachmentsTable(attachments) {
-    const tbody = document.querySelector('#attachments-table tbody');
-    if (!tbody) return;
-    
-    if (!attachments || attachments.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="2" style="color:var(--text-muted);text-align:center;">No attachments</td></tr>`;
-        return;
-    }
-    
-    tbody.innerHTML = attachments.map(a => {
-        return `
-            <tr>
-                <td style="color:${a.is_dangerous ? '#ef4444' : '#10b981'}"><i class="fas ${a.is_dangerous ? 'fa-times-circle' : 'fa-check-circle'}"></i> ${a.is_dangerous ? 'DANGEROUS' : 'SAFE'}</td>
-                <td>${escHtml(a.filename)}</td>
-            </tr>
+            <div class="finding-item">
+                <div class="finding-icon"><i class="fas ${icon}"></i></div>
+                <div class="finding-text">
+                    <h5>${escHtml(ind.title)}</h5>
+                    <p>${escHtml(ind.description)}</p>
+                </div>
+            </div>
         `;
     }).join('');
 }

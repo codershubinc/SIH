@@ -3,192 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThreatMail Forensics</title>
-    <!-- Leaflet CSS -->
+    <title>Modern Mail + Threat Engine</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="gmail-theme">
+<body>
     
-    <!-- Top Navbar -->
-    <header class="gmail-header">
-        <div class="header-left">
-            <button class="icon-btn"><i class="fas fa-bars"></i></button>
-            <div class="logo">
-                <i class="fas fa-envelope-shield" style="color: #ea4335; font-size: 24px; margin-right: 10px;"></i>
-                <span>ThreatMail</span>
+    <div class="app-container">
+        <!-- 1. Minimal App Navigation -->
+        <nav class="app-nav">
+            <div class="nav-logo">
+                <i class="fas fa-layer-group"></i>
             </div>
-        </div>
-        <div class="header-middle">
-            <div class="search-bar">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search mail and threats...">
-                <i class="fas fa-sliders-h"></i>
+            <div class="nav-items">
+                <a href="#" class="active"><i class="fas fa-inbox"></i></a>
+                <a href="#"><i class="far fa-paper-plane"></i></a>
+                <a href="#"><i class="far fa-bookmark"></i></a>
+                <a href="#"><i class="far fa-folder"></i></a>
             </div>
-        </div>
-        <div class="header-right">
-            <button class="icon-btn"><i class="far fa-question-circle"></i></button>
-            <button class="icon-btn"><i class="fas fa-cog"></i></button>
-            <div class="avatar">A</div>
-        </div>
-    </header>
-
-    <div class="gmail-body">
-        <!-- Sidebar -->
-        <nav class="gmail-sidebar">
-            <button class="compose-btn"><i class="fas fa-pencil-alt"></i> Compose</button>
-            <ul class="nav-links">
-                <li class="active"><i class="fas fa-inbox"></i> Inbox <span class="badge">5</span></li>
-                <li><i class="fas fa-star"></i> Starred</li>
-                <li><i class="far fa-clock"></i> Snoozed</li>
-                <li><i class="fas fa-paper-plane"></i> Sent</li>
-                <li><i class="fas fa-file-alt"></i> Drafts</li>
-                <li><i class="fas fa-shield-alt"></i> Quarantined</li>
-            </ul>
+            <div class="nav-bottom">
+                <a href="#"><i class="fas fa-cog"></i></a>
+                <div class="avatar">JS</div>
+            </div>
         </nav>
 
-        <!-- Main Inbox Content -->
-        <main class="gmail-main" id="main-view">
-            <div class="toolbar">
-                <div class="toolbar-left">
-                    <input type="checkbox">
-                    <button class="icon-btn"><i class="fas fa-redo"></i></button>
-                    <button class="icon-btn"><i class="fas fa-ellipsis-v"></i></button>
-                </div>
+        <!-- 2. Email List Column -->
+        <aside class="inbox-panel">
+            <div class="inbox-header">
+                <h2>Inbox</h2>
+                <button class="icon-btn"><i class="fas fa-edit"></i></button>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search emails...">
+            </div>
+            <div class="inbox-list" id="inbox-list"></div>
+        </aside>
+
+        <!-- 3. Main Reading Pane -->
+        <main class="reading-pane">
+            <div id="empty-state" class="empty-state">
+                <i class="far fa-envelope-open" style="font-size: 48px; color: #475569; margin-bottom: 16px;"></i>
+                <p>Select an email to read</p>
             </div>
 
-            <!-- Inbox List -->
-            <div class="inbox-list" id="inbox-list">
-                <!-- Populated by JS -->
-            </div>
-
-            <!-- Email Reading Pane (Hidden by default) -->
-            <div class="reading-pane hidden" id="reading-pane">
+            <div id="email-view" class="email-view hidden">
                 <div class="reading-toolbar">
-                    <button class="icon-btn" id="btn-back-to-inbox"><i class="fas fa-arrow-left"></i></button>
-                    <button class="icon-btn"><i class="fas fa-archive"></i></button>
-                    <button class="icon-btn"><i class="fas fa-exclamation-circle"></i></button>
-                    <button class="icon-btn"><i class="fas fa-trash"></i></button>
-                </div>
-                <div class="email-content">
-                    <div class="email-header-row">
-                        <h2 id="read-subject">Subject Here</h2>
-                        <button class="analyze-btn" id="btn-analyze-threat"><i class="fas fa-shield-virus"></i> Analyze Threat</button>
+                    <div class="toolbar-actions">
+                        <button class="icon-btn"><i class="fas fa-reply"></i></button>
+                        <button class="icon-btn"><i class="fas fa-trash"></i></button>
                     </div>
-                    <div class="email-meta">
-                        <div class="avatar" id="read-avatar">?</div>
-                        <div class="meta-details">
-                            <strong id="read-sender-name">Sender Name</strong> <span id="read-sender-email">&lt;sender@email.com&gt;</span>
-                            <div class="to-me">to me <i class="fas fa-caret-down"></i></div>
+                    
+                    <div class="integration-banner" id="integration-banner">
+                        <div class="banner-info">
+                            <i class="fas fa-shield-virus shield-icon"></i>
+                            <span>Threat Engine Active</span>
                         </div>
-                        <div class="email-date" id="read-date">Date</div>
+                        <button class="scan-btn" id="btn-analyze-threat">
+                            <i class="fas fa-bolt"></i> Scan Email
+                        </button>
                     </div>
-                    <div class="email-body" id="read-body">
-                        <!-- Email content will be loaded here -->
-                        Loading content...
+                </div>
+
+                <div class="email-content-wrapper">
+                    <h1 class="email-subject" id="read-subject">Subject</h1>
+                    <div class="email-meta">
+                        <div class="meta-avatar" id="read-avatar">?</div>
+                        <div class="meta-details">
+                            <div class="sender-line">
+                                <strong id="read-sender-name">Sender</strong>
+                                <span class="sender-email" id="read-sender-email">&lt;email&gt;</span>
+                            </div>
+                            <div class="date-line" id="read-date">Today at 10:45 AM</div>
+                        </div>
                     </div>
+                    <div class="email-body-content" id="read-body"></div>
                 </div>
             </div>
         </main>
-    </div>
 
-    <!-- Threat Analysis Overlay (Slides up) -->
-    <div class="analysis-overlay hidden" id="analysis-overlay">
-        <div class="overlay-header">
-            <h3><i class="fas fa-shield-alt"></i> Threat Intelligence Report</h3>
-            <button class="icon-btn" id="btn-close-analysis"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="overlay-content" id="results-section">
-            
-            <!-- Exact same SOC layout from previous version, just styled inside the overlay -->
-            <div class="dashboard-grid">
-                <!-- Left Panel -->
-                <div class="panel left-panel">
-                    <div class="card score-card" id="score-card">
-                        <div class="score-ring">
-                            <svg viewBox="0 0 36 36" class="circular-chart">
-                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <path class="circle" id="score-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            </svg>
-                            <div class="score-text" id="score-value">0</div>
-                        </div>
-                        <div class="score-details">
-                            <h2 id="risk-level-badge">CLEAN</h2>
-                            <p id="verdict-text">Awaiting Analysis...</p>
-                        </div>
-                    </div>
-
-                    <div class="card auth-matrix" id="auth-pills">
-                        <h3>Authentication Checks</h3>
-                        <div class="pills-container">
-                            <!-- Populated by JS -->
-                        </div>
-                        <div id="domain-alignment"></div>
-                    </div>
-
-                    <div class="card" id="nlp-card">
-                        <h3>Content Heuristics</h3>
-                        <div class="urgency-bar-container">
-                            <div class="urgency-bar" id="urgency-bar"></div>
-                        </div>
-                        <p id="nlp-summary"></p>
-                        <div class="keyword-tags" id="nlp-keywords"></div>
-                    </div>
-
-                    <div class="card">
-                        <h3>Threat Indicators</h3>
-                        <div class="indicators-list" id="indicators-list">
-                            <!-- Populated by JS -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Panel -->
-                <div class="panel right-panel">
-                    <div class="card map-card">
-                        <h3>Routing Path Forensics</h3>
-                        <div id="map-container"></div>
-                    </div>
-
-                    <div class="card scrollable-card">
-                        <h3>Network Hops</h3>
-                        <table class="data-table" id="hops-table">
-                            <thead><tr><th>#</th><th>IP / Org</th><th>Location</th><th>Protocol</th><th>Delay</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-
-                    <div class="card scrollable-card">
-                        <h3>Extracted URLs</h3>
-                        <table class="data-table" id="urls-table">
-                            <thead><tr><th>Status</th><th>Target URL</th><th>Display Text</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-
-                    <div class="card scrollable-card">
-                        <h3>Attachments</h3>
-                        <table class="data-table" id="attachments-table">
-                            <thead><tr><th>Status</th><th>Filename</th><th>Type</th><th>Size</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
+        <!-- 4. Simplified Threat Sidebar -->
+        <aside class="threat-sidebar" id="threat-sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-radar"></i> Intelligence Report</h3>
+                <button class="icon-btn" id="btn-close-threat"><i class="fas fa-times"></i></button>
             </div>
             
-        </div>
+            <div class="sidebar-scroll-content" id="results-section">
+                <!-- Top Summary (Very Clean) -->
+                <div class="verdict-card">
+                    <div class="verdict-main">
+                        <h1 id="score-value">0</h1>
+                        <span class="score-label">/ 100</span>
+                    </div>
+                    <h2 id="risk-level-badge">CLEAN</h2>
+                    <p id="verdict-text" class="verdict-subtext">Awaiting Analysis...</p>
+                </div>
+
+                <!-- Clean Map View -->
+                <div class="simple-card">
+                    <h4>Routing Geography</h4>
+                    <div id="map-container"></div>
+                </div>
+
+                <!-- Auth Status -->
+                <div class="simple-card">
+                    <h4>Authentication</h4>
+                    <div class="auth-row" id="auth-pills">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div id="domain-alignment" class="align-note"></div>
+                </div>
+
+                <!-- Key Findings -->
+                <div class="simple-card">
+                    <h4>Key Findings</h4>
+                    <div class="findings-list" id="indicators-list"></div>
+                </div>
+            </div>
+        </aside>
     </div>
 
-    <!-- Spinner -->
     <div id="loading-spinner" class="spinner-overlay hidden">
-        <div class="spinner"></div>
-        <p>Analyzing Email Vectors...</p>
+        <div class="spinner"></div><p>Scanning payload...</p>
     </div>
-
-    <!-- Toast -->
     <div id="toast" class="toast hidden"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
