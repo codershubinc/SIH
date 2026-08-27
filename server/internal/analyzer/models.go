@@ -18,6 +18,8 @@ type EmailMetadata struct {
 	UserAgent     string    `json:"user_agent,omitempty"`
 	ContentType   string    `json:"content_type"`
 	BodyPreview   string    `json:"body_preview,omitempty"`
+	RawBody       string    `json:"raw_body,omitempty"`
+	BodyHTML      string    `json:"body_html,omitempty"`
 	RawHeaders    string    `json:"raw_headers"`
 }
 

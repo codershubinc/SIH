@@ -124,6 +124,8 @@ func ParseEML(data []byte) (*ParsedEML, error) {
 			UserAgent:     ua,
 			ContentType:   ct,
 			BodyPreview:   preview,
+			RawBody:       textBody,
+			BodyHTML:      htmlBody,
 			RawHeaders:    rawHdrBuf.String(),
 		},
 		Headers:       hdrs,
