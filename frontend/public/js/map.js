@@ -3,7 +3,7 @@
  * SIH26106 Email Threat Forensics
  */
 
-const CARTO_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_URL = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_2cxe_1_aea6b08879097f800d5ed8bb';
 const CARTO_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 /**
@@ -25,7 +25,7 @@ export function initMap(containerId) {
     attributionControl: true,
   });
 
-  L.tileLayer(CARTO_DARK, {
+  L.tileLayer(TILE_URL, {
     attribution: CARTO_ATTR,
     subdomains: 'abcd',
     maxZoom: 19,
