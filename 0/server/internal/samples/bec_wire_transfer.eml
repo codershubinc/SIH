@@ -1,0 +1,43 @@
+Return-Path: <ceo-assistant@outlook-office365-mail.xyz>
+Received: from mail.outlook-office365-mail.xyz (outlook-office365-mail.xyz [109.248.206.14])
+        by mx.corporate-victim.com (Postfix) with ESMTP id C2A9D7E14;
+        Tue, 27 Aug 2026 08:45:01 +0530 (IST)
+Received: from smtp.relay01.nl (194.135.16.89)
+        by mail.outlook-office365-mail.xyz (Postfix) with ESMTP id B11C6;
+        Tue, 27 Aug 2026 03:14:55 +0000 (UTC)
+Received-SPF: Fail (SPF: 109.248.206.14 is not authorized for domain ceo@corporate-victim.com)
+Authentication-Results: mx.corporate-victim.com;
+        spf=fail smtp.mailfrom=outlook-office365-mail.xyz;
+        dkim=none;
+        dmarc=fail action=quarantine header.from=corporate-victim.com
+From: "Robert Chen - CEO" <ceo@corporate-victim.com>
+To: cfo@corporate-victim.com
+Reply-To: robert.chen.ceo.urgent@gmail.com
+Subject: URGENT - Confidential Wire Transfer Required Today
+Date: Tue, 27 Aug 2026 03:14:50 +0000
+Message-Id: <20260827031450.BEC001@outlook-office365-mail.xyz>
+MIME-Version: 1.0
+X-Mailer: Microsoft Outlook 16.0
+Content-Type: text/plain; charset=UTF-8
+
+Mark,
+
+I need you to handle this confidentially – do NOT discuss with anyone in the office.
+
+I am in a board meeting right now and cannot take calls. I need you to initiate a wire transfer of $48,000 USD to our new vendor account IMMEDIATELY. This is time-sensitive and must be done today before 3PM EST.
+
+Wire Details:
+- Bank: First International Bank
+- Account Name: Global Ventures LLC
+- Account Number: 8847291034
+- Routing Number: 021000021
+- Reference: Invoice INV-2026-0892
+
+This deal expires today. Do not delay. Reply to this email to confirm you have initiated the transfer.
+
+Robert Chen
+CEO, Corporate Victim Corp
+Mobile: +1-555-0147
+
+Sent from my iPhone
+

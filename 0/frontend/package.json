@@ -1,0 +1,12 @@
+{
+  "name": "email-threat-forensics-ui",
+  "version": "1.0.0",
+  "description": "SIH26106 Email Threat Forensics Frontend",
+  "scripts": {
+    "serve": "bun run index.ts",
+    "dev": "bun run index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
