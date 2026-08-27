@@ -1,304 +1,144 @@
-/**
- * app.js — Main App Controller (ES Module)
- * SIH26106 Email Threat Forensics
- */
-
 import { initMap, renderHopMap } from './map.js';
 import { renderResults } from './ui.js';
 
-/* ════════════════════════════════════════════════
-   CONFIG
-   ════════════════════════════════════════════════ */
 const API_BASE = 'http://localhost:8080';
+let mapInstance = null;
+let currentSampleId = null;
+let loadedSamples = [];
 
-/* ════════════════════════════════════════════════
-   STATE
-   ════════════════════════════════════════════════ */
-let leafletMap    = null;
-let lastResult    = null;
-let isAnalysing   = false;
-
-/* ════════════════════════════════════════════════
-   DOM REFS
-   ════════════════════════════════════════════════ */
-const uploadSection  = document.getElementById('upload-section');
-const resultsSection = document.getElementById('results-section');
-const spinnerOverlay = document.getElementById('spinner-overlay');
-const dropZone       = document.getElementById('drop-zone');
-const fileInput      = document.getElementById('file-input');
-const backBtn        = document.getElementById('back-btn');
-const exportBtn      = document.getElementById('export-btn');
-const toast          = document.getElementById('toast');
-
-/* ════════════════════════════════════════════════
-   INITIALISATION
-   ════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  initLeafletMap();
-  bindEvents();
-  checkApiStatus();
+    fetchSamples();
+    setupEventListeners();
 });
 
-function initLeafletMap() {
-  leafletMap = initMap('map-container');
+async function fetchSamples() {
+    try {
+        const res = await fetch(`${API_BASE}/api/v1/samples`);
+        if (!res.ok) throw new Error('Failed to fetch samples');
+        const data = await res.json();
+        loadedSamples = data.samples || [];
+        renderInbox(loadedSamples);
+    } catch (e) {
+        showToast('Error loading inbox: ' + e.message, 'error');
+    }
 }
 
-/* ════════════════════════════════════════════════
-   API CALLS
-   ════════════════════════════════════════════════ */
+function renderInbox(samples) {
+    const list = document.getElementById('inbox-list');
+    list.innerHTML = '';
+    
+    samples.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'email-row';
+        row.innerHTML = `
+            <div class="controls">
+                <i class="far fa-square"></i>
+                <i class="far fa-star"></i>
+            </div>
+            <div class="sender">${s.name}</div>
+            <div class="subject-snippet">
+                <span class="subject">${s.category}</span>
+                <span class="snippet">- ${s.description}</span>
+            </div>
+            <div class="date">Aug 27</div>
+        `;
+        row.addEventListener('click', () => openEmail(s));
+        list.appendChild(row);
+    });
+}
 
-/**
- * Upload and analyse an .eml file.
- * @param {FormData} formData
- */
-async function analyzeFile(formData) {
-  if (isAnalysing) return;
-  isAnalysing = true;
-  showSpinner(true);
+function openEmail(sample) {
+    currentSampleId = sample.id;
+    document.getElementById('inbox-list').classList.add('hidden');
+    document.getElementById('reading-pane').classList.remove('hidden');
+    
+    document.getElementById('read-subject').textContent = sample.category;
+    document.getElementById('read-sender-name').textContent = sample.name;
+    document.getElementById('read-sender-email').textContent = `<${sample.id}@example.com>`;
+    
+    document.getElementById('read-avatar').textContent = sample.name.charAt(0);
+    
+    // Quick fake body based on description, but ideally we'd fetch the raw EML body.
+    // For MVP, we'll display a generic message or description.
+    document.getElementById('read-body').innerHTML = `
+        <p><strong>Category:</strong> ${sample.category}</p>
+        <p><strong>Description:</strong> ${sample.description}</p>
+        <hr style="margin: 20px 0; border:0; border-top:1px solid #ccc;">
+        <p style="color:#555;">[Raw email content preview hidden. Click Analyze to see forensic details.]</p>
+    `;
+}
 
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/analyze`, {
-      method: 'POST',
-      body:   formData,
+function setupEventListeners() {
+    document.getElementById('btn-back-to-inbox').addEventListener('click', () => {
+        document.getElementById('reading-pane').classList.add('hidden');
+        document.getElementById('inbox-list').classList.remove('hidden');
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      throw new Error(err.error ?? err.message ?? `Server error ${res.status}`);
-    }
-
-    const data = await res.json();
-    lastResult  = data;
-    handleSuccess(data);
-  } catch (err) {
-    showToast(`Analysis failed: ${err.message}`, 'error');
-    console.error('[analyzeFile]', err);
-  } finally {
-    showSpinner(false);
-    isAnalysing = false;
-  }
-}
-
-/**
- * Load a built-in sample threat.
- * @param {string} sampleId
- */
-async function loadSample(sampleId) {
-  if (isAnalysing) return;
-  isAnalysing = true;
-  showSpinner(true);
-
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/analyze`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ sample_id: sampleId }),
+    document.getElementById('btn-analyze-threat').addEventListener('click', () => {
+        if (currentSampleId) analyzeSample(currentSampleId);
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      throw new Error(err.error ?? err.message ?? `Server error ${res.status}`);
-    }
-
-    const data = await res.json();
-    lastResult  = data;
-    handleSuccess(data);
-  } catch (err) {
-    showToast(`Failed to load sample: ${err.message}`, 'error');
-    console.error('[loadSample]', err);
-  } finally {
-    showSpinner(false);
-    isAnalysing = false;
-  }
-}
-
-/* ════════════════════════════════════════════════
-   RESULT HANDLER
-   ════════════════════════════════════════════════ */
-
-function handleSuccess(data) {
-  // Switch panels
-  uploadSection.classList.add('hidden');
-  resultsSection.classList.remove('hidden');
-
-  // Render all UI panels
-  renderResults(data, leafletMap);
-
-  // Render map hops
-  const analysis = data.analysis ?? data;
-  const hops     = analysis.routing?.hops ?? analysis.hops ?? [];
-  renderHopMap(leafletMap, hops);
-
-  // Scroll to top
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  showToast('Analysis complete!', 'success');
-}
-
-/* ════════════════════════════════════════════════
-   EVENT BINDINGS
-   ════════════════════════════════════════════════ */
-
-function bindEvents() {
-  // ── Drag & Drop ──
-  dropZone.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.add('highlight');
-  });
-
-  dropZone.addEventListener('dragleave', e => {
-    e.preventDefault();
-    dropZone.classList.remove('highlight');
-  });
-
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.remove('highlight');
-
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    if (!isValidEml(file)) {
-      showToast('Please upload a valid .eml or .msg file.', 'error');
-      return;
-    }
-
-    const fd = new FormData();
-    fd.append('file', file);
-    analyzeFile(fd);
-  });
-
-  // ── Click to open file picker ──
-  dropZone.addEventListener('click', e => {
-    if (e.target === fileInput) return;
-    fileInput.click();
-  });
-
-  dropZone.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      fileInput.click();
-    }
-  });
-
-  // ── File input change ──
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
-
-    if (!isValidEml(file)) {
-      showToast('Please upload a valid .eml or .msg file.', 'error');
-      fileInput.value = '';
-      return;
-    }
-
-    const fd = new FormData();
-    fd.append('file', file);
-    analyzeFile(fd);
-    fileInput.value = '';
-  });
-
-  // ── Sample buttons ──
-  document.querySelectorAll('.sample-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const sampleId = btn.dataset.sample;
-      if (sampleId) loadSample(sampleId);
+    document.getElementById('btn-close-analysis').addEventListener('click', () => {
+        document.getElementById('analysis-overlay').classList.add('hidden');
     });
-  });
-
-  // ── Back / Reset ──
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      resultsSection.classList.add('hidden');
-      uploadSection.classList.remove('hidden');
-      lastResult = null;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-
-  // ── Export JSON ──
-  if (exportBtn) {
-    exportBtn.addEventListener('click', () => {
-      if (!lastResult) {
-        showToast('No analysis result to export.', 'error');
-        return;
-      }
-
-      const json  = JSON.stringify(lastResult, null, 2);
-      const blob  = new Blob([json], { type: 'application/json' });
-      const url   = URL.createObjectURL(blob);
-      const a     = document.createElement('a');
-      const subject = (lastResult.analysis ?? lastResult).subject ?? 'email-analysis';
-      const fname   = `forensics-${slugify(subject)}-${Date.now()}.json`;
-
-      a.href     = url;
-      a.download = fname;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast('JSON exported!', 'success');
-    });
-  }
 }
 
-/* ════════════════════════════════════════════════
-   API STATUS CHECK
-   ════════════════════════════════════════════════ */
-
-async function checkApiStatus() {
-  const dotEl = document.querySelector('.status-dot');
-  const lblEl = document.querySelector('.api-status');
-
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/health`, { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      if (dotEl) dotEl.classList.remove('offline');
-      if (lblEl) lblEl.title = 'Backend API is reachable';
-    } else {
-      throw new Error(`${res.status}`);
+async function analyzeSample(sampleId) {
+    showSpinner();
+    try {
+        const res = await fetch(`${API_BASE}/api/v1/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sample_id: sampleId })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Analysis failed');
+        }
+        
+        const data = await res.json();
+        
+        document.getElementById('analysis-overlay').classList.remove('hidden');
+        
+        if (!mapInstance) {
+            mapInstance = initMap('map-container');
+        }
+        
+        // Update reading pane with actual email body/subject now that we have it
+        if(data.metadata) {
+            document.getElementById('read-subject').textContent = data.metadata.subject;
+            document.getElementById('read-sender-name').textContent = data.metadata.sender_name || data.metadata.from;
+            document.getElementById('read-sender-email').textContent = `<${data.metadata.sender_address}>`;
+            
+            if (data.metadata.body_html) {
+                document.getElementById('read-body').innerHTML = data.metadata.body_html;
+            } else {
+                document.getElementById('read-body').innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${data.metadata.body_preview}</pre>`;
+            }
+        }
+        
+        renderResults(data, mapInstance);
+        
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        hideSpinner();
     }
-  } catch {
-    if (dotEl) dotEl.classList.add('offline');
-    if (lblEl) {
-      lblEl.innerHTML = `<i class="fa-solid fa-circle status-dot offline"></i> API Offline`;
-      lblEl.title     = `Cannot reach ${API_BASE}`;
-    }
-  }
 }
 
-/* ════════════════════════════════════════════════
-   HELPERS
-   ════════════════════════════════════════════════ */
-
-function showSpinner(show) {
-  spinnerOverlay?.classList.toggle('hidden', !show);
+function showSpinner() {
+    document.getElementById('loading-spinner').classList.remove('hidden');
 }
 
-let toastTimer = null;
-function showToast(message, type = 'info') {
-  if (!toast) return;
-
-  clearTimeout(toastTimer);
-  toast.textContent = message;
-  toast.className   = `toast ${type}`;
-  toast.classList.remove('hidden');
-
-  toastTimer = setTimeout(() => {
-    toast.classList.add('hidden');
-  }, 4000);
+function hideSpinner() {
+    document.getElementById('loading-spinner').classList.add('hidden');
 }
 
-function isValidEml(file) {
-  const name = (file.name ?? '').toLowerCase();
-  return name.endsWith('.eml') || name.endsWith('.msg') ||
-         file.type === 'message/rfc822';
-}
-
-function slugify(str) {
-  return String(str)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
+function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = `toast ${type}`;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 3000);
 }

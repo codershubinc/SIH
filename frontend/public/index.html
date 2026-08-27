@@ -1,272 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Email Threat Forensics | SIH26106</title>
-
-  <!-- Font Awesome 6 -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-
-  <!-- Leaflet.js 1.9.4 -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Chart.js 4.4.0 -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-  <!-- App CSS -->
-  <link rel="stylesheet" href="/css/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreatMail Forensics</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="gmail-theme">
+    
+    <!-- Top Navbar -->
+    <header class="gmail-header">
+        <div class="header-left">
+            <button class="icon-btn"><i class="fas fa-bars"></i></button>
+            <div class="logo">
+                <i class="fas fa-envelope-shield" style="color: #ea4335; font-size: 24px; margin-right: 10px;"></i>
+                <span>ThreatMail</span>
+            </div>
+        </div>
+        <div class="header-middle">
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search mail and threats...">
+                <i class="fas fa-sliders-h"></i>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="icon-btn"><i class="far fa-question-circle"></i></button>
+            <button class="icon-btn"><i class="fas fa-cog"></i></button>
+            <div class="avatar">A</div>
+        </div>
+    </header>
 
-  <!-- Loading Spinner Overlay -->
-  <div id="spinner-overlay" class="spinner-overlay hidden">
-    <div class="spinner-wrap">
-      <div class="spinner"></div>
-      <p class="spinner-text">Analysing email…</p>
+    <div class="gmail-body">
+        <!-- Sidebar -->
+        <nav class="gmail-sidebar">
+            <button class="compose-btn"><i class="fas fa-pencil-alt"></i> Compose</button>
+            <ul class="nav-links">
+                <li class="active"><i class="fas fa-inbox"></i> Inbox <span class="badge">5</span></li>
+                <li><i class="fas fa-star"></i> Starred</li>
+                <li><i class="far fa-clock"></i> Snoozed</li>
+                <li><i class="fas fa-paper-plane"></i> Sent</li>
+                <li><i class="fas fa-file-alt"></i> Drafts</li>
+                <li><i class="fas fa-shield-alt"></i> Quarantined</li>
+            </ul>
+        </nav>
+
+        <!-- Main Inbox Content -->
+        <main class="gmail-main" id="main-view">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="checkbox">
+                    <button class="icon-btn"><i class="fas fa-redo"></i></button>
+                    <button class="icon-btn"><i class="fas fa-ellipsis-v"></i></button>
+                </div>
+            </div>
+
+            <!-- Inbox List -->
+            <div class="inbox-list" id="inbox-list">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Email Reading Pane (Hidden by default) -->
+            <div class="reading-pane hidden" id="reading-pane">
+                <div class="reading-toolbar">
+                    <button class="icon-btn" id="btn-back-to-inbox"><i class="fas fa-arrow-left"></i></button>
+                    <button class="icon-btn"><i class="fas fa-archive"></i></button>
+                    <button class="icon-btn"><i class="fas fa-exclamation-circle"></i></button>
+                    <button class="icon-btn"><i class="fas fa-trash"></i></button>
+                </div>
+                <div class="email-content">
+                    <div class="email-header-row">
+                        <h2 id="read-subject">Subject Here</h2>
+                        <button class="analyze-btn" id="btn-analyze-threat"><i class="fas fa-shield-virus"></i> Analyze Threat</button>
+                    </div>
+                    <div class="email-meta">
+                        <div class="avatar" id="read-avatar">?</div>
+                        <div class="meta-details">
+                            <strong id="read-sender-name">Sender Name</strong> <span id="read-sender-email">&lt;sender@email.com&gt;</span>
+                            <div class="to-me">to me <i class="fas fa-caret-down"></i></div>
+                        </div>
+                        <div class="email-date" id="read-date">Date</div>
+                    </div>
+                    <div class="email-body" id="read-body">
+                        <!-- Email content will be loaded here -->
+                        Loading content...
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-  </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="toast hidden"></div>
-
-  <!-- Header -->
-  <header class="app-header">
-    <div class="header-inner">
-      <div class="logo-group">
-        <i class="fa-solid fa-shield-virus logo-icon"></i>
-        <div>
-          <h1 class="app-title">Email Threat Forensics</h1>
-          <span class="app-subtitle">SIH 2026 · Cybersecurity Intelligence Platform</span>
+    <!-- Threat Analysis Overlay (Slides up) -->
+    <div class="analysis-overlay hidden" id="analysis-overlay">
+        <div class="overlay-header">
+            <h3><i class="fas fa-shield-alt"></i> Threat Intelligence Report</h3>
+            <button class="icon-btn" id="btn-close-analysis"><i class="fas fa-times"></i></button>
         </div>
-      </div>
-      <div class="header-actions">
-        <span class="api-status" id="api-status">
-          <i class="fa-solid fa-circle status-dot"></i> API Connected
-        </span>
-      </div>
+        <div class="overlay-content" id="results-section">
+            
+            <!-- Exact same SOC layout from previous version, just styled inside the overlay -->
+            <div class="dashboard-grid">
+                <!-- Left Panel -->
+                <div class="panel left-panel">
+                    <div class="card score-card" id="score-card">
+                        <div class="score-ring">
+                            <svg viewBox="0 0 36 36" class="circular-chart">
+                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="circle" id="score-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="score-text" id="score-value">0</div>
+                        </div>
+                        <div class="score-details">
+                            <h2 id="risk-level-badge">CLEAN</h2>
+                            <p id="verdict-text">Awaiting Analysis...</p>
+                        </div>
+                    </div>
+
+                    <div class="card auth-matrix" id="auth-pills">
+                        <h3>Authentication Checks</h3>
+                        <div class="pills-container">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div id="domain-alignment"></div>
+                    </div>
+
+                    <div class="card" id="nlp-card">
+                        <h3>Content Heuristics</h3>
+                        <div class="urgency-bar-container">
+                            <div class="urgency-bar" id="urgency-bar"></div>
+                        </div>
+                        <p id="nlp-summary"></p>
+                        <div class="keyword-tags" id="nlp-keywords"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Threat Indicators</h3>
+                        <div class="indicators-list" id="indicators-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel -->
+                <div class="panel right-panel">
+                    <div class="card map-card">
+                        <h3>Routing Path Forensics</h3>
+                        <div id="map-container"></div>
+                    </div>
+
+                    <div class="card scrollable-card">
+                        <h3>Network Hops</h3>
+                        <table class="data-table" id="hops-table">
+                            <thead><tr><th>#</th><th>IP / Org</th><th>Location</th><th>Protocol</th><th>Delay</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="card scrollable-card">
+                        <h3>Extracted URLs</h3>
+                        <table class="data-table" id="urls-table">
+                            <thead><tr><th>Status</th><th>Target URL</th><th>Display Text</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="card scrollable-card">
+                        <h3>Attachments</h3>
+                        <table class="data-table" id="attachments-table">
+                            <thead><tr><th>Status</th><th>Filename</th><th>Type</th><th>Size</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
     </div>
-  </header>
 
-  <main class="app-main">
+    <!-- Spinner -->
+    <div id="loading-spinner" class="spinner-overlay hidden">
+        <div class="spinner"></div>
+        <p>Analyzing Email Vectors...</p>
+    </div>
 
-    <!-- ───────── UPLOAD SECTION ───────── -->
-    <section id="upload-section" class="upload-section">
-      <div class="upload-hero">
-        <h2 class="upload-heading">Analyse a Suspicious Email</h2>
-        <p class="upload-sub">Upload an <code>.eml</code> file or choose a sample threat below</p>
-      </div>
+    <!-- Toast -->
+    <div id="toast" class="toast hidden"></div>
 
-      <!-- Drop Zone -->
-      <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload EML file">
-        <input type="file" id="file-input" accept=".eml,.msg" class="file-input-hidden" />
-        <div class="drop-zone-content">
-          <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
-          <p class="drop-primary">Drag &amp; drop your <strong>.eml</strong> file here</p>
-          <p class="drop-secondary">or <span class="drop-link">click to browse</span></p>
-          <p class="drop-hint"><i class="fa-solid fa-circle-info"></i> Max 25 MB · Supports .eml, .msg</p>
-        </div>
-      </div>
-
-      <!-- Divider -->
-      <div class="or-divider"><span>or try a sample</span></div>
-
-      <!-- Sample Buttons -->
-      <div class="sample-buttons">
-        <button class="sample-btn btn-phish"    data-sample="paypal_phishing">
-          <i class="fa-solid fa-fish-fins"></i> PayPal Phishing
-        </button>
-        <button class="sample-btn btn-bec"      data-sample="bec_wire_transfer">
-          <i class="fa-solid fa-building-columns"></i> BEC Wire Transfer
-        </button>
-        <button class="sample-btn btn-malware"  data-sample="malware_iso">
-          <i class="fa-solid fa-bug"></i> Malware ISO
-        </button>
-        <button class="sample-btn btn-crypto"   data-sample="crypto_scam">
-          <i class="fa-solid fa-bitcoin-sign"></i> Crypto Scam
-        </button>
-        <button class="sample-btn btn-legit"    data-sample="legitimate_email">
-          <i class="fa-solid fa-circle-check"></i> Legitimate Email
-        </button>
-      </div>
-    </section>
-
-    <!-- ───────── RESULTS SECTION ───────── -->
-    <section id="results-section" class="results-section hidden">
-
-      <!-- Results Toolbar -->
-      <div class="results-toolbar">
-        <button id="back-btn" class="toolbar-btn">
-          <i class="fa-solid fa-arrow-left"></i> New Analysis
-        </button>
-        <div class="toolbar-meta" id="toolbar-meta">
-          <i class="fa-solid fa-envelope"></i>
-          <span id="email-subject-label">—</span>
-        </div>
-        <div class="toolbar-right">
-          <button id="export-btn" class="toolbar-btn export-btn">
-            <i class="fa-solid fa-download"></i> Export JSON
-          </button>
-        </div>
-      </div>
-
-      <!-- Two-column layout -->
-      <div class="results-grid">
-
-        <!-- LEFT PANEL -->
-        <div class="left-panel">
-
-          <!-- Score Card -->
-          <div class="card score-card" id="score-card">
-            <div class="card-header">
-              <i class="fa-solid fa-gauge-high"></i> Threat Risk Score
-            </div>
-            <div class="score-body">
-              <div class="score-number-wrap">
-                <svg class="score-ring" viewBox="0 0 120 120">
-                  <circle class="ring-bg" cx="60" cy="60" r="52" />
-                  <circle class="ring-fill" id="score-ring-fill" cx="60" cy="60" r="52"
-                          stroke-dasharray="326.73" stroke-dashoffset="326.73" />
-                </svg>
-                <span class="score-number" id="score-number">0</span>
-              </div>
-              <div class="score-meta">
-                <span class="risk-badge" id="risk-badge">—</span>
-                <p class="score-label" id="score-label">Awaiting analysis</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Auth Pills -->
-          <div class="card" id="auth-card">
-            <div class="card-header">
-              <i class="fa-solid fa-key"></i> Authentication Checks
-            </div>
-            <div id="auth-pills" class="auth-pills"></div>
-            <div id="domain-alignment-wrap" class="domain-alignment-wrap"></div>
-          </div>
-
-          <!-- NLP Card -->
-          <div class="card" id="nlp-card">
-            <div class="card-header">
-              <i class="fa-solid fa-brain"></i> NLP Analysis
-            </div>
-            <div id="nlp-content"></div>
-          </div>
-
-          <!-- Indicators -->
-          <div class="card" id="indicators-card">
-            <div class="card-header">
-              <i class="fa-solid fa-triangle-exclamation"></i> Threat Indicators
-              <span class="count-badge" id="indicator-count">0</span>
-            </div>
-            <div id="indicators-list" class="indicators-list"></div>
-          </div>
-
-        </div>
-
-        <!-- RIGHT PANEL -->
-        <div class="right-panel">
-
-          <!-- Map -->
-          <div class="card map-card">
-            <div class="card-header">
-              <i class="fa-solid fa-earth-americas"></i> Email Route Map
-              <span class="count-badge" id="hop-count">0 hops</span>
-            </div>
-            <div id="map-container" class="map-container"></div>
-          </div>
-
-          <!-- Hops Table -->
-          <div class="card" id="hops-card">
-            <div class="card-header">
-              <i class="fa-solid fa-network-wired"></i> Routing Hops
-            </div>
-            <div class="table-wrap">
-              <table id="hops-table" class="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>IP Address</th>
-                    <th>Country</th>
-                    <th>City</th>
-                    <th>Organisation</th>
-                    <th>Protocol</th>
-                    <th>Transit</th>
-                    <th>Flags</th>
-                  </tr>
-                </thead>
-                <tbody id="hops-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- URLs Table -->
-          <div class="card" id="urls-card">
-            <div class="card-header">
-              <i class="fa-solid fa-link"></i> URLs Extracted
-              <span class="count-badge" id="url-count">0</span>
-            </div>
-            <div class="table-wrap">
-              <table id="urls-table" class="data-table">
-                <thead>
-                  <tr>
-                    <th>Risk</th>
-                    <th>URL</th>
-                    <th>Display Text</th>
-                    <th>Flags</th>
-                  </tr>
-                </thead>
-                <tbody id="urls-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Attachments Table -->
-          <div class="card" id="attachments-card">
-            <div class="card-header">
-              <i class="fa-solid fa-paperclip"></i> Attachments
-              <span class="count-badge" id="attachment-count">0</span>
-            </div>
-            <div class="table-wrap">
-              <table id="attachments-table" class="data-table">
-                <thead>
-                  <tr>
-                    <th>Filename</th>
-                    <th>Type</th>
-                    <th>Size</th>
-                    <th>Risk</th>
-                  </tr>
-                </thead>
-                <tbody id="attachments-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Raw Headers -->
-          <div class="card" id="raw-headers-card">
-            <div class="card-header raw-headers-toggle" id="raw-headers-toggle" role="button" tabindex="0">
-              <i class="fa-solid fa-code"></i> Raw Email Headers
-              <i class="fa-solid fa-chevron-down toggle-icon" id="headers-chevron"></i>
-            </div>
-            <div id="raw-headers-body" class="raw-headers-body hidden">
-              <pre id="raw-headers-pre" class="raw-headers-pre"></pre>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <footer class="app-footer">
-    <span>SIH 2026 · Team 26106 · Email Threat Forensics Platform</span>
-  </footer>
-
-  <!-- JS Modules -->
-  <script type="module" src="/js/app.js"></script>
-
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
